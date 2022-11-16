@@ -1,0 +1,12 @@
+[package]
+authors = ["Michael Lodder <redmike7@gmail.com>"]
+description = "A rust implementation similar to https://www.fourmilab.ch/random/"
+documentation = "https://docs.rs/random_tester"
+edition = "2021"
+homepage = "https://docs.rs/random_tester"
+license = "Apache-2.0"
+name = "random_tester"
+repository = "https://github.com/mikelodder7/random_tester"
+version = "0.1.0"
+
+[dependencies]
