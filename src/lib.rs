@@ -28,3 +28,21 @@ pub trait EntropyTester: Default {
     /// Compute the final result
     fn finalize(&mut self) -> f64;
 }
+
+/// An entropy test
+pub trait DynEntropyTester: Default {
+    /// Process a sequence of bytes from a stream
+    fn update(&mut self, stream: &[u8]);
+    /// Compute the final result
+    fn finalize(&mut self) -> f64;
+}
+
+impl<R: EntropyTester> DynEntropyTester for R {
+    fn update(&mut self, stream: &[u8]) {
+        R::update(self, stream)
+    }
+
+    fn finalize(&mut self) -> f64 {
+        R::finalize(self)
+    }
+}
