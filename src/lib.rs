@@ -22,7 +22,7 @@ pub use sc::*;
 pub use shannon::*;
 
 /// An entropy test
-pub trait EntropyTester: Default {
+pub trait EntropyTester {
     /// Process a sequence of bytes from a stream
     fn update<B: AsRef<[u8]>>(&mut self, stream: B);
     /// Compute the final result
@@ -30,7 +30,7 @@ pub trait EntropyTester: Default {
 }
 
 /// An entropy test
-pub trait DynEntropyTester: Default {
+pub trait DynEntropyTester {
     /// Process a sequence of bytes from a stream
     fn update(&mut self, stream: &[u8]);
     /// Compute the final result
@@ -39,10 +39,10 @@ pub trait DynEntropyTester: Default {
 
 impl<R: EntropyTester> DynEntropyTester for R {
     fn update(&mut self, stream: &[u8]) {
-        R::update(self, stream)
+        EntropyTester::update(self, stream)
     }
 
     fn finalize(&mut self) -> f64 {
-        R::finalize(self)
+        EntropyTester::finalize(self)
     }
 }

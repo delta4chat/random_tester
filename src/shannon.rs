@@ -4,7 +4,7 @@ use super::*;
 #[derive(Debug, Clone, Copy)]
 pub struct ShannonCalculation {
     buckets: [usize; 256],
-    total_buckets: usize,
+    total_buckets: usize
 }
 
 impl Default for ShannonCalculation {
@@ -31,7 +31,7 @@ impl EntropyTester for ShannonCalculation {
         for b in &self.buckets {
             let probability = (*b as f64) / length;
             if probability > 0.0 {
-                entropy += probability * (1.0 / probability).log2();
+                entropy += probability * (1.0/probability).log2();
             }
         }
         entropy
