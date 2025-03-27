@@ -1,3 +1,9 @@
+//! entest (entropy test) is a program that applies tests to byte sequences stored in files or streams
+
+#![forbid(unsafe_code)]
+
+#![cfg_attr(all(not(test), not(feature="std")), no_std)]
+
 #![deny(
     warnings,
     missing_docs,
@@ -7,21 +13,88 @@
     trivial_casts,
     trivial_numeric_casts
 )]
-//! A program that applies tests to byte sequences stored in files or streams
 
-mod chisqr;
-mod mc;
-mod mean;
-mod sc;
-mod shannon;
+extern crate alloc;
+use alloc::{
+    format,
+    string::{String, ToString},
+};
 
-pub use chisqr::*;
-pub use mc::*;
-pub use mean::*;
-pub use sc::*;
-pub use shannon::*;
+pub use fastnum::D256 as Dec;
+pub use fastnum::dec256 as dec;
 
-/// An entropy test
+pub mod entest;
+pub use entest::{Entest, EntestResult};
+
+pub mod chisqr;
+pub use chisqr::ChiSquareCalculation;
+
+pub mod mc;
+pub use mc::MonteCarloCalculation;
+
+pub mod mean;
+pub use mean::MeanCalculation;
+
+pub mod sc;
+pub use sc::SerialCorrelationCoefficientCalculation;
+
+pub mod shannon;
+pub use shannon::ShannonCalculation;
+
+/// Tests entropy bits of provided byte stream.
+pub trait EntropyTest {
+    /// provides byte stream for testing it's entropy.
+    fn update(&mut self, bytes: &[u8]);
+
+    /// get result of entropy test.
+    fn finalize(&self) -> Dec;
+}
+
+/// extension of [EntropyTest]. but it is **not** dyn-compatible (object-safety).
+pub trait EntropyTestExt: Sized + Default {
+    /// provides any types that is implements `AsRef<[u8]>` for testing it's entropy.
+    fn update<B: AsRef<[u8]>>(&mut self, bytes: B) -> &mut Self;
+
+    /// get result of entropy test.
+    fn finalize(&self) -> Dec;
+
+    /// oneshot test function for small data.
+    ///
+    /// this is equivalent to `Self::default().update(bytes).finalize()`.
+    fn test<B: AsRef<[u8]>>(bytes: B) -> Dec {
+        let mut this = Self::default();
+        EntropyTestExt::update(&mut this, bytes);
+        EntropyTestExt::finalize(&this)
+    }
+}
+
+impl<T: EntropyTest + Default> EntropyTestExt for T {
+    fn update<B: AsRef<[u8]>>(&mut self, bytes: B) -> &mut Self {
+        let bytes = bytes.as_ref();
+        EntropyTest::update(self, bytes);
+        self
+    }
+
+    fn finalize(&self) -> Dec {
+        EntropyTest::finalize(self)
+    }
+}
+
+#[allow(deprecated)]
+impl<T: EntropyTester + Clone> EntropyTest for T {
+    fn update(&mut self, bytes: &[u8]) {
+        EntropyTester::update(self, bytes)
+    }
+
+    fn finalize(&self) -> Dec {
+        let mut this = self.clone();
+        EntropyTester::finalize(&mut this).into()
+    }
+}
+
+/// old-style, deprecated, kept only for compatibility.
+/// please use [EntropyTest] instead.
+#[deprecated(note="please use `EntropyTest` instead.")]
 pub trait EntropyTester {
     /// Process a sequence of bytes from a stream
     fn update<B: AsRef<[u8]>>(&mut self, stream: B);
@@ -29,7 +102,9 @@ pub trait EntropyTester {
     fn finalize(&mut self) -> f64;
 }
 
-/// An entropy test
+/// old-style, deprecated, kept only for compatibility.
+/// please use [EntropyTest] instead.
+#[deprecated(note="please use `EntropyTest` instead.")]
 pub trait DynEntropyTester {
     /// Process a sequence of bytes from a stream
     fn update(&mut self, stream: &[u8]);
@@ -37,7 +112,8 @@ pub trait DynEntropyTester {
     fn finalize(&mut self) -> f64;
 }
 
-impl<R: EntropyTester> DynEntropyTester for R {
+#[allow(deprecated)]
+impl<T: EntropyTester> DynEntropyTester for T {
     fn update(&mut self, stream: &[u8]) {
         EntropyTester::update(self, stream)
     }
@@ -46,3 +122,4 @@ impl<R: EntropyTester> DynEntropyTester for R {
         EntropyTester::finalize(self)
     }
 }
+

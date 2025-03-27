@@ -1,7 +1,9 @@
+//! the Chi Square test.
+
 use super::*;
 
 /// Computes the Chi Square probability of a random dataset this extreme.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Copy, Clone)]
 pub struct ChiSquareCalculation {
     buckets: [usize; 256],
     total_buckets: usize,
@@ -9,43 +11,95 @@ pub struct ChiSquareCalculation {
 
 impl Default for ChiSquareCalculation {
     fn default() -> Self {
-        Self {
-            buckets: [0; 256],
-            total_buckets: 0,
-        }
-    }
-}
-
-impl EntropyTester for ChiSquareCalculation {
-    fn update<B: AsRef<[u8]>>(&mut self, stream: B) {
-        for b in stream.as_ref() {
-            let i = *b as usize;
-            self.buckets[i] += 1;
-            self.total_buckets += 1;
-        }
-    }
-
-    fn finalize(&mut self) -> f64 {
-        probability_chi_sq(self.statistic())
+        Self::INIT
     }
 }
 
 impl ChiSquareCalculation {
-    /// Compute X^2 statistic
-    pub(crate) fn statistic(&self) -> f64 {
-        let total = self.total_buckets as f64;
-        let mut chi_sq = 0.0;
-        let exp = total / 256.0;
+    /// the blanket state (initial value) of [ChiSquareCalculation].
+    pub const INIT: Self =
+        Self {
+            buckets: [0; 256],
+            total_buckets: 0,
+        };
 
-        for b in &self.buckets {
-            let a = (*b as f64) - exp;
-            chi_sq += (a * a) / exp;
+    /// creates new blanket state for chi-square calculation.
+    ///
+    /// this just copy from [ChiSquareCalculation::INIT].
+    pub const fn new() -> Self {
+        Self::INIT
+    }
+
+    /// apply byte stream to chi-square state.
+    pub const fn update(&mut self, bytes: &[u8]) -> &mut Self {
+        let mut i = 0;
+        let bytes_len = bytes.len();
+        while i < bytes_len {
+            self.buckets[bytes[i] as usize] += 1;
+            self.total_buckets += 1;
+            i += 1;
         }
-        chi_sq
+
+        self
+    }
+
+    /// get finalize chi-square result of current byte stream.
+    pub const fn finalize(&self) -> Dec {
+        probability_chi_sq(chi_statistic(&self.buckets, self.total_buckets))
+    }
+
+    /// oneshot test function for small data.
+    ///
+    /// this is equivalent to `Self::new().update(data).finalize()`.
+    pub const fn test(data: &[u8]) -> Dec {
+        let mut this = Self::INIT;
+        this.update(data);
+        this.finalize()
     }
 }
 
-/// Adapted from https://www.fourmilab.ch/random/
+impl EntropyTest for ChiSquareCalculation {
+    fn update(&mut self, bytes: &[u8]) {
+        Self::update(self, bytes);
+    }
+
+    fn finalize(&self) -> Dec {
+        Self::finalize(self)
+    }
+}
+
+const MAX_X: Dec = dec!(20.0); // max value of e^x
+const NEG_MAX_X: Dec = MAX_X.neg();
+const LOG_SQRT_PI: Dec = dec!(0.5723649429247000870717135); // log (sqrt (pi) )
+const I_SQRT_PI: Dec = dec!(0.5641895835477562869480795); // 1 / sqrt(pi)
+const ZERO: Dec = dec!(0.0);
+const HALF_ONE: Dec = dec!(0.5);
+const ONE: Dec = dec!(1.0);
+const TWO: Dec = dec!(2.0);
+const THREE: Dec = dec!(3.0);
+
+/// Compute X^2 statistic
+pub const fn chi_statistic(buckets: &[usize; 256], total_buckets: usize) -> Dec {
+    let total = Dec::from_usize(total_buckets);
+    let mut chi_sq = ZERO;
+    let exp = total.div(dec!(256.0));
+
+    let mut i = 0;
+    let mut b;
+    let mut a;
+    while i < 256 {
+        b = buckets[i];
+
+        a = Dec::from_usize(b).sub(exp);
+        chi_sq = chi_sq.add(a.mul(a).div(exp));
+
+        i += 1;
+    }
+
+    chi_sq
+}
+
+/// Adapted from <https://www.fourmilab.ch/random/>
 /// which is an adaption from
 ///
 /// ALGORITHM Compute probability of chi square value.
@@ -55,113 +109,97 @@ impl ChiSquareCalculation {
 ///     Updated for rounding errors based on remark in
 ///         ACM TOMS June 1985, p. 185
 ///
-pub(crate) fn probability_chi_sq(chi_sq: f64) -> f64 {
-    const MAX_X: f64 = 20.0; // max value of e^x
-    const LOG_SQRT_PI: f64 = 0.5723649429247000870717135; // log (sqrt (pi) )
-    const I_SQRT_PI: f64 = 0.5641895835477562869480795; // 1 / sqrt(pi)
-
+pub const fn probability_chi_sq(chi_sq: Dec) -> Dec {
     let mut x = chi_sq;
-    if x <= 0.0 {
-        return 1.0;
+    if x.le(&ZERO) {
+        return ONE;
     }
 
-    let a = 0.5 * x;
-    let mut s = 2.0 * poz(-x.sqrt());
+    let a = HALF_ONE.mul(x);
+    let mut s = TWO.mul(poz(x.sqrt().neg()));
 
-    x = 127.0;
-    let mut z = 0.5;
+    x = dec!(127.0);
+    let mut z = HALF_ONE;
 
-    if a > MAX_X {
+    if a.gt(&MAX_X) {
         let mut e = LOG_SQRT_PI;
         let c = a.ln();
-        while z <= x {
-            e += z.ln();
-            s += ex(c * z - a - e);
-            z += 1.0;
+        while z.le(&x) {
+            e = e.add(z.ln());
+            s = s.add(ex(c.mul(z).sub(a).sub(e)));
+            z = z.add(ONE);
         }
         s
     } else {
-        let mut e = I_SQRT_PI / a.sqrt();
-        let mut c = 0.0;
-        while z <= x {
-            e *= a / z;
-            c += e;
-            z += 1.0;
+        let mut e = I_SQRT_PI.div(a.sqrt());
+        let mut c = ZERO;
+        while z.le(&x) {
+            e = e.mul(a.div(z));
+            c = c.add(e);
+            z = z.add(ONE);
         }
-        let y = ex(-a);
-        c * y + s
+        let y = ex(a.neg());
+        c.mul(y).add(s)
     }
 }
 
-pub(crate) fn ex(x: f64) -> f64 {
-    const MAX_X: f64 = 20.0;
-    if x < -MAX_X {
-        0.0
+/// exp
+pub const fn ex(x: Dec) -> Dec {
+    if x.lt(&NEG_MAX_X) {
+        ZERO
     } else {
         x.exp()
     }
 }
 
 /// VAR normal z value
-pub(crate) fn poz(z: f64) -> f64 {
+pub const fn poz(z: Dec) -> Dec {
     let w;
     let x;
     let mut y;
 
-    if z == 0.0 {
-        x = 0.0;
+    if z.eq(&ZERO) {
+        x = ZERO;
     } else {
-        y = 0.5 * z.abs();
-        if y >= 3.0 {
-            x = 1.0;
-        } else if y < 1.0 {
-            w = y * y;
-            x = ((((((((0.000124818987 * w - 0.001075204047) * w + 0.005198775019) * w
-                - 0.019198292004)
-                * w
-                + 0.059054035642)
-                * w
-                - 0.151968751364)
-                * w
-                + 0.319152932694)
-                * w
-                - 0.531923007300)
-                * w
-                + 0.797884560593)
-                * y
-                * 2.0;
+        y = HALF_ONE.mul(z.abs());
+        if y.ge(&THREE) {
+            x = ONE;
+        } else if y.lt(&ONE) {
+            w = y.mul(y);
+            x = dec!(0.000124818987)
+                .mul(w).sub(dec!(0.001075204047))
+                .mul(w).add(dec!(0.005198775019))
+                .mul(w).sub(dec!(0.019198292004))
+                .mul(w).add(dec!(0.059054035642))
+                .mul(w).sub(dec!(0.151968751364))
+                .mul(w).add(dec!(0.319152932694))
+                .mul(w).sub(dec!(0.531923007300))
+                .mul(w).add(dec!(0.797884560593))
+                .mul(y)
+                .mul(TWO);
         } else {
-            y -= 2.0;
-            x = (((((((((((((-0.000045255659 * y + 0.000152529290) * y - 0.000019538132)
-                * y
-                - 0.000676904986)
-                * y
-                + 0.001390604284)
-                * y
-                - 0.000794620820)
-                * y
-                - 0.002034254874)
-                * y
-                + 0.006549791214)
-                * y
-                - 0.010557625006)
-                * y
-                + 0.011630447319)
-                * y
-                - 0.009279453341)
-                * y
-                + 0.005353579108)
-                * y
-                - 0.002141268741)
-                * y
-                + 0.000535310849)
-                * y
-                + 0.999936657524;
+            y = y.sub(TWO);
+
+            x = dec!(-0.000045255659)
+                .mul(y).add(dec!(0.000152529290))
+                .mul(y).sub(dec!(0.000019538132))
+                .mul(y).sub(dec!(0.000676904986))
+                .mul(y).add(dec!(0.001390604284))
+                .mul(y).sub(dec!(0.000794620820))
+                .mul(y).sub(dec!(0.002034254874))
+                .mul(y).add(dec!(0.006549791214))
+                .mul(y).sub(dec!(0.010557625006))
+                .mul(y).add(dec!(0.011630447319))
+                .mul(y).sub(dec!(0.009279453341))
+                .mul(y).add(dec!(0.005353579108))
+                .mul(y).sub(dec!(0.002141268741))
+                .mul(y).add(dec!(0.000535310849))
+                .mul(y).add(dec!(0.999936657524));
         }
     }
-    if z > 0.0 {
-        (x + 1.0) * 0.5
+    if z.gt(&ZERO) {
+        x.add(ONE).mul(HALF_ONE)
     } else {
-        (1.0 - x) * 0.5
+        ONE.sub(x).mul(HALF_ONE)
     }
 }

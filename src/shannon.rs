@@ -1,7 +1,9 @@
+//! the Shannon entropy test.
+
 use super::*;
 
 /// Computes the Shannon Entropy test
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Copy, Clone)]
 pub struct ShannonCalculation {
     buckets: [usize; 256],
     total_buckets: usize
@@ -9,31 +11,74 @@ pub struct ShannonCalculation {
 
 impl Default for ShannonCalculation {
     fn default() -> Self {
-        Self {
-            buckets: [0; 256],
-            total_buckets: 0,
-        }
+        Self::INIT
     }
 }
 
-impl EntropyTester for ShannonCalculation {
-    fn update<B: AsRef<[u8]>>(&mut self, stream: B) {
-        for b in stream.as_ref() {
-            let i = *b as usize;
-            self.buckets[i] += 1;
-            self.total_buckets += 1;
-        }
+impl ShannonCalculation {
+    /// the blanket state (initial value) of [ShannonCalculation].
+    pub const INIT: Self =
+        Self {
+            buckets: [0; 256],
+            total_buckets: 0,
+        };
+
+    /// create new blanket state for shannon calculation.
+    ///
+    /// this just copy from [ShannonCalculation::INIT].
+    pub const fn new() -> Self {
+        Self::INIT
     }
 
-    fn finalize(&mut self) -> f64 {
-        let length = self.total_buckets as f64;
-        let mut entropy = 0.0;
-        for b in &self.buckets {
-            let probability = (*b as f64) / length;
-            if probability > 0.0 {
-                entropy += probability * (1.0/probability).log2();
-            }
+    /// apply byte stream to shannon state.
+    pub const fn update(&mut self, bytes: &[u8]) -> &mut Self {
+        let mut i = 0;
+        let bytes_len = bytes.len();
+        while i < bytes_len {
+            self.buckets[bytes[i] as usize] += 1;
+            self.total_buckets += 1;
+            i += 1;
         }
+
+        self
+    }
+
+    /// get finalize shannon result of current byte stream.
+    pub const fn finalize(&self) -> Dec {
+        let length = Dec::from_usize(self.total_buckets);
+        let mut entropy = dec!(0.0);
+
+        let mut i = 0;
+        let mut probability;
+        let mut p;
+        while i < 256 {
+            probability = Dec::from_usize(self.buckets[i]).div(length);
+            if probability.gt(&dec!(0.0)) {
+                p = dec!(1.0).div(probability).log2();
+                entropy = entropy.add(probability.mul(p));
+            }
+            i += 1;
+        }
+
         entropy
+    }
+
+    /// oneshot test function for small data.
+    ///
+    /// this is equivalent to `Self::new().update(data).finalize()`.
+    pub const fn test(data: &[u8]) -> Dec {
+        let mut this = Self::INIT;
+        this.update(data);
+        this.finalize()
+    }
+}
+
+impl EntropyTest for ShannonCalculation {
+    fn update(&mut self, bytes: &[u8]) {
+        Self::update(self, bytes);
+    }
+
+    fn finalize(&self) -> Dec {
+        Self::finalize(self)
     }
 }
