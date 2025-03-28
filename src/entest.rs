@@ -203,4 +203,46 @@ impl Entest {
             shannon: self.shannon.finalize(),
         }
     }
+
+    /// this is equivalent to `Self::new().update(data).finalize()`.
+    pub const fn test(bytes: &[u8]) -> EntestResult {
+        let mut this = Self::INIT;
+        this.update(bytes);
+        this.finalize()
+    }
+
+    #[cfg(feature="rand_core")]
+    /// test the provided RNG.
+    pub fn test_rng_alloc_vec<R: rand_core::RngCore>(rng: &mut R, size: usize) -> EntestResult {
+        const CHUNK_SIZE_MAX: usize = 262144;
+
+        let mut this = Self::INIT;
+        if size == 0 {
+            return this.finalize();
+        }
+
+        let mut chunk_size = size / 10;
+        if chunk_size < size {
+            chunk_size = size;
+        }
+        if chunk_size > CHUNK_SIZE_MAX {
+            chunk_size = CHUNK_SIZE_MAX;
+        }
+
+        use alloc::vec;
+        let mut chunk = vec![0u8; chunk_size];
+
+        let mut remaining = size;
+        while remaining > 0 {
+            if remaining < chunk_size {
+                chunk_size = remaining;
+            }
+
+            rng.fill_bytes(&mut chunk[..chunk_size]);
+            this.update(&chunk[..chunk_size]);
+            remaining -= chunk_size;
+        }
+
+        this.finalize()
+    }
 }

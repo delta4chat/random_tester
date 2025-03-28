@@ -64,7 +64,7 @@ impl ChiSquareCalculation {
 
     /// oneshot test function for small data.
     ///
-    /// this is equivalent to `Self::new().update(data).finalize()`.
+    /// this is equivalent to `Self::new().update(data).finalize_probability()`.
     pub const fn test(data: &[u8]) -> (Dec, Dec) {
         let mut this = Self::INIT;
         this.update(data);
