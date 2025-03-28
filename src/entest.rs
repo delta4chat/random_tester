@@ -32,62 +32,68 @@ impl core::fmt::Debug for EntestResult {
 
 impl core::fmt::Display for EntestResult {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        if false {
-            let _ = format!("{}", String::new());
+        use core::fmt::Write;
+        let mut out = String::new();
+
+        macro_rules! r {
+            ($n:ident) => {
+                {
+                    write!(out, "{}", $n)?;
+                    let prefix = out.split_once('.').map(|(int, _)| { int.len() + 1 }).unwrap_or(0);
+                    while
+                        out.contains('.')
+                        &&
+                        (
+                            (out.len() - prefix) > 20
+                            ||
+                            out.ends_with('0')
+                            ||
+                            out.ends_with('.')
+                        )
+                    {
+                        out.pop();
+                    }
+                    f.write_str(&out)?;
+                    out.clear();
+                }
+            }
         }
 
         let samples = self.samples();
+
         let chi = self.chi();
         let chi_prob = self.chi_prob.mul(dec!(100.0));
 
         let mc = self.mc;
         let mc_error = error_ratio(Dec::PI, mc).mul(dec!(100.0));
+
         let mean = self.mean();
         let sc = self.sc();
         let shannon = self.shannon();
 
         f.write_str("
 Entropy = ")?;
-        if shannon.fractional_digits_count() > 20 {
-            write!(f, "{shannon:.20}")?;
-        } else {
-            write!(f, "{shannon}")?;
-        }
+        r!(shannon);
         write!(f, " bits per byte.
 
 Optimum compression would reduce the size of this {samples} byte file by [TODO] percent.
 
 Chi square distribution for {samples} samples is ")?;
-        if chi.fractional_digits_count() > 20 {
-            write!(f, "{chi:.20}")?;
-        } else {
-            write!(f, "{chi}")?;
-        }
+        r!(chi);
         write!(f, ",
 and randomly would exceed this value {chi_prob:.2} percent of the times.
 
 Arithmetic mean value of data bytes is ")?;
-        if mean.fractional_digits_count() > 20 {
-            write!(f, "{mean:.20}")?;
-        } else {
-            write!(f, "{mean}")?;
-        }
+        r!(mean);
         f.write_str(" (127.5 = random).
 
 Monte Carlo value for Pi is ")?;
-        if mc.fractional_digits_count() > 30 {
-            write!(f, "{mc:.30}")?;
-        } else {
-            write!(f, "{mc}")?;
-        }
+        r!(mc);
         write!(f, " (error {mc_error:.2} percent).
 
+(TODO scc is not accurate)
 Serial correlation coefficient is ")?;
-        if sc.fractional_digits_count() > 20 {
-            write!(f, "{sc:.20}")?;
-        } else {
-            write!(f, "{sc}")?;
-        }
+        r!(sc);
         f.write_str(" (totally uncorrelated = 0.0).
 ")
     }
