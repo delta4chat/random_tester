@@ -13,10 +13,13 @@ const IN_CIRCLE_DISTANCE: Dec = Dec::from_u64(281_474_943_156_225);
 pub struct MonteCarloCalculation {
     /// Bytes used by Monte Carlo coordinates
     monte: [u8; MONTE_LEN],
+
     /// Accumulator pointer
     accumulator: usize,
+
     /// Tries
     tries: usize,
+
     /// Inside Count
     in_count: usize,
 }

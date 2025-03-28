@@ -45,6 +45,10 @@ impl ShannonCalculation {
 
     /// get finalize shannon result of current byte stream.
     pub const fn finalize(&self) -> Dec {
+        if self.total_buckets == 0 {
+            return Dec::NAN;
+        }
+
         let length = Dec::from_usize(self.total_buckets);
         let mut entropy = dec!(0.0);
 
@@ -61,6 +65,11 @@ impl ShannonCalculation {
         }
 
         entropy
+    }
+
+    /// get the samples of current state.
+    pub const fn samples(&self) -> usize {
+        self.total_buckets
     }
 
     /// oneshot test function for small data.

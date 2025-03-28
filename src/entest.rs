@@ -6,7 +6,9 @@ use crate::*;
 #[derive(Copy, Clone)]
 #[non_exhaustive]
 pub struct EntestResult {
+    samples: usize, // samples of input (length of bytes)
     chi: Dec,
+    chi_prob: Dec,
     mc: Dec,
     mean: Dec,
     sc: Dec,
@@ -16,7 +18,10 @@ pub struct EntestResult {
 impl core::fmt::Debug for EntestResult {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("EntestResult")
+         .field("samples", &(self.samples))
          .field("chi", &(self.chi.to_string()))
+         .field("chi_prob", &(self.chi_prob.to_string()))
+
          .field("mc", &(self.mc.to_string()))
          .field("mean", &(self.mean.to_string()))
          .field("sc", &(self.sc.to_string()))
@@ -28,33 +33,80 @@ impl core::fmt::Debug for EntestResult {
 impl core::fmt::Display for EntestResult {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         if false {
-            let _ = String::new();
+            let _ = format!("{}", String::new());
         }
-        let chi = self.chi;
-        let chi_percent = chi.mul(dec!(100.0));
+
+        let samples = self.samples();
+        let chi = self.chi();
+        let chi_prob = self.chi_prob.mul(dec!(100.0));
+
         let mc = self.mc;
-        let mean = self.mean;
-        let sc = self.sc;
-        let shannon = self.shannon;
-        f.write_str(&format!("Entropy = {shannon} bits per byte.
+        let mc_error = error_ratio(Dec::PI, mc).mul(dec!(100.0));
+        let mean = self.mean();
+        let sc = self.sc();
+        let shannon = self.shannon();
 
-Optimum compression would reduce the size
-of this [TODO] byte file by [TODO] percent.
+        f.write_str("
+Entropy = ")?;
+        if shannon.fractional_digits_count() > 20 {
+            write!(f, "{shannon:.20}")?;
+        } else {
+            write!(f, "{shannon}")?;
+        }
+        write!(f, " bits per byte.
 
-Chi square distribution for [TODO] samples is {chi:.10}, and randomly
-would exceed this value {chi_percent:.2} percent of the times.
+Optimum compression would reduce the size of this {samples} byte file by [TODO] percent.
 
-Arithmetic mean value of data bytes is {mean} (127.5 = random).
-Monte Carlo value for Pi is {mc}.
-Serial correlation coefficient is {sc} (totally uncorrelated = 0.0).
-"))
+Chi square distribution for {samples} samples is ")?;
+        if chi.fractional_digits_count() > 20 {
+            write!(f, "{chi:.20}")?;
+        } else {
+            write!(f, "{chi}")?;
+        }
+        write!(f, ",
+and randomly would exceed this value {chi_prob:.2} percent of the times.
+
+Arithmetic mean value of data bytes is ")?;
+        if mean.fractional_digits_count() > 20 {
+            write!(f, "{mean:.20}")?;
+        } else {
+            write!(f, "{mean}")?;
+        }
+        f.write_str(" (127.5 = random).
+
+Monte Carlo value for Pi is ")?;
+        if mc.fractional_digits_count() > 30 {
+            write!(f, "{mc:.30}")?;
+        } else {
+            write!(f, "{mc}")?;
+        }
+        write!(f, " (error {mc_error:.2} percent).
+
+Serial correlation coefficient is ")?;
+        if sc.fractional_digits_count() > 20 {
+            write!(f, "{sc:.20}")?;
+        } else {
+            write!(f, "{sc}")?;
+        }
+        f.write_str(" (totally uncorrelated = 0.0).
+")
     }
 }
 
 impl EntestResult {
+    /// total samples of input. that is the length of bytes.
+    pub const fn samples(&self) -> usize {
+        self.samples
+    }
+
     /// result of chi-square calculation.
     pub const fn chi<'a>(&'a self) -> &'a Dec {
         &self.chi
+    }
+
+    /// result of `probability_chi_sq(self.chi)`
+    pub const fn chi_prob<'a>(&'a self) -> &'a Dec {
+        &self.chi_prob
     }
 
     /// result of monte-carlo calculation.
@@ -135,8 +187,10 @@ impl Entest {
 
     /// get results from all test methods.
     pub const fn finalize(&self) -> EntestResult {
+        let (chi, chi_prob) = self.chi.finalize_probability();
         EntestResult {
-            chi: self.chi.finalize(),
+            samples: self.chi.samples(),
+            chi, chi_prob,
             mc: self.mc.finalize(),
             mean: self.mean.finalize(),
             sc: self.sc.finalize(),

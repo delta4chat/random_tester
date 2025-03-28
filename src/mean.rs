@@ -66,6 +66,11 @@ impl MeanCalculation {
         sum.div(Dec::from_usize(self.total_buckets))
     }
 
+    /// get the samples of current state.
+    pub const fn samples(&self) -> usize {
+        self.total_buckets
+    }
+
     /// oneshot test function for small data.
     ///
     /// this is equivalent to `Self::new().update(data).finalize()`.

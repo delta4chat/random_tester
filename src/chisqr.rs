@@ -45,16 +45,30 @@ impl ChiSquareCalculation {
 
     /// get finalize chi-square result of current byte stream.
     pub const fn finalize(&self) -> Dec {
-        probability_chi_sq(chi_statistic(&self.buckets, self.total_buckets))
+        chi_statistic(&self.buckets, self.total_buckets)
+    }
+
+    /// returns `self.finalize()` and `probability_chi_sq(self.finalize())`
+    pub const fn finalize_probability(&self) -> (Dec, Dec) {
+        let f = self.finalize();
+
+        //(f, pochisq(f, 255))
+        //(f, pochisq(f, self.samples()))
+        (f, probability_chi_sq(f, 127))
+    }
+
+    /// get the samples of current state.
+    pub const fn samples(&self) -> usize {
+        self.total_buckets
     }
 
     /// oneshot test function for small data.
     ///
     /// this is equivalent to `Self::new().update(data).finalize()`.
-    pub const fn test(data: &[u8]) -> Dec {
+    pub const fn test(data: &[u8]) -> (Dec, Dec) {
         let mut this = Self::INIT;
         this.update(data);
-        this.finalize()
+        this.finalize_probability()
     }
 }
 
@@ -68,18 +82,48 @@ impl EntropyTest for ChiSquareCalculation {
     }
 }
 
-const MAX_X: Dec = dec!(20.0); // max value of e^x
-const NEG_MAX_X: Dec = MAX_X.neg();
-const LOG_SQRT_PI: Dec = dec!(0.5723649429247000870717135); // log (sqrt (pi) )
-const I_SQRT_PI: Dec = dec!(0.5641895835477562869480795); // 1 / sqrt(pi)
-const ZERO: Dec = dec!(0.0);
-const HALF_ONE: Dec = dec!(0.5);
-const ONE: Dec = dec!(1.0);
-const TWO: Dec = dec!(2.0);
-const THREE: Dec = dec!(3.0);
+/// max value of e^x (`20.0`)
+pub const MAX_X: Dec = dec!(20.0);
+
+/// negative value of [MAX_X].
+pub const NEG_MAX_X: Dec = MAX_X.neg();
+
+/// python: `math.log(math.sqrt(math.pi))`
+///
+/// (approx `0.5723649429247000870717135`).
+//#[allow(long_running_const_eval)]
+pub const LOG_SQRT_PI: Dec = dec!(0.57236494292470008707171367567652935582364740645765578575681153573606888494239); // Dec::PI.sqrt().ln();
+
+/// python: `1/math.sqrt(math.pi)`
+///
+/// (approx `0.5641895835477562869480795`)
+//#[allow(long_running_const_eval)]
+pub const I_SQRT_PI: Dec = dec!(0.56418958354775628694807945156077258584405062932899885684408572171064246844150); // Dec::ONE.div(Dec::PI.sqrt());
+
+/// zero (`0.0`)
+pub const ZERO: Dec = dec!(0.0);
+
+/// half of one (`0.5`)
+pub const HALF_ONE: Dec = dec!(0.5);
+
+/// one (`1.0`)
+pub const ONE: Dec = dec!(1.0);
+
+/// two (`2.0`)
+pub const TWO: Dec = dec!(2.0);
+
+/// max value of z (`6.0`)
+pub const MAX_Z: Dec = dec!(6.0);
+
+/// half of [MAX_Z].
+pub const HALF_MAX_Z: Dec = MAX_Z.div(TWO);
 
 /// Compute X^2 statistic
 pub const fn chi_statistic(buckets: &[usize; 256], total_buckets: usize) -> Dec {
+    if total_buckets == 0 {
+        return Dec::NAN;
+    }
+
     let total = Dec::from_usize(total_buckets);
     let mut chi_sq = ZERO;
     let exp = total.div(dec!(256.0));
@@ -87,16 +131,74 @@ pub const fn chi_statistic(buckets: &[usize; 256], total_buckets: usize) -> Dec 
     let mut i = 0;
     let mut b;
     let mut a;
-    while i < 256 {
-        b = buckets[i];
 
-        a = Dec::from_usize(b).sub(exp);
+    while i < 256 {
+        b = Dec::from_usize(buckets[i]);
+
+        a = b.sub(exp);
         chi_sq = chi_sq.add(a.mul(a).div(exp));
 
         i += 1;
     }
 
     chi_sq
+}
+/**
+ * FUNCTION pochisq: probability of chi sqaure value
+
+ * ALGORITHM Compute probability of chi square value.
+        Adapted from:
+                Hill, I. D. and Pike, M. C.  Algorithm 299
+                Collected Algorithms for the CACM 1967 p. 243
+
+        [FIXME]
+        Updated for rounding errors based on remark in
+                ACM TOMS June 1985, page 185
+            (??? is it causes bugs? because fastnum has no rounding errors)
+*/
+// FIXME returns incorrect result currently
+pub(crate) const fn _pochisq(chi_sq: Dec, df: usize) -> Dec {
+    if chi_sq.le(&ZERO) || df < 1 {
+        return ONE;
+    }
+
+    let mut x = chi_sq;
+
+    let mut e;
+    let mut c;
+    let mut z;
+
+    let a = HALF_ONE.mul(x);
+    let even = (df & 1) == 0;
+
+    let y = if df > 1 { ex(a.neg()) } else { ZERO };
+
+    let mut s = if even { y } else { TWO.mul(poz(x.sqrt().neg())) };
+    if df > 2 {
+        x = HALF_ONE.mul(Dec::from_usize(df - 1));
+        z = if even { ONE } else { HALF_ONE };
+        if a.gt(&MAX_X) {
+            e = if even { ZERO } else { LOG_SQRT_PI };
+            c = a.ln();
+            while z.le(&x) {
+                e = e.add(z.ln());
+                s = s.add(c.mul(z).sub(a).sub(e));
+                z = z.add(ONE);
+            }
+            s
+        } else {
+            e = if even { ONE } else { I_SQRT_PI.div(a.sqrt()) };
+            c = ZERO;
+            while z.le(&x) {
+                e = e.mul(a.div(z));
+                c = c.add(e);
+                z = z.add(ONE);
+            }
+            c.mul(y).add(s)
+        }
+    } else {
+        s
+    }
 }
 
 /// Adapted from <https://www.fourmilab.ch/random/>
@@ -108,8 +210,11 @@ pub const fn chi_statistic(buckets: &[usize; 256], total_buckets: usize) -> Dec 
 ///         Collected Algorithms for the CACM 1967 p. 243
 ///     Updated for rounding errors based on remark in
 ///         ACM TOMS June 1985, p. 185
-///
-pub const fn probability_chi_sq(chi_sq: Dec) -> Dec {
+/// default df = 127
+pub const fn probability_chi_sq(chi_sq: Dec, df: usize) -> Dec {
+    if chi_sq.is_nan() {
+        return chi_sq;
+    }
     let mut x = chi_sq;
     if x.le(&ZERO) {
         return ONE;
@@ -118,7 +223,7 @@ pub const fn probability_chi_sq(chi_sq: Dec) -> Dec {
     let a = HALF_ONE.mul(x);
     let mut s = TWO.mul(poz(x.sqrt().neg()));
 
-    x = dec!(127.0);
+    x = Dec::from_usize(df);
     let mut z = HALF_ONE;
 
     if a.gt(&MAX_X) {
@@ -162,7 +267,7 @@ pub const fn poz(z: Dec) -> Dec {
         x = ZERO;
     } else {
         y = HALF_ONE.mul(z.abs());
-        if y.ge(&THREE) {
+        if y.ge(&HALF_MAX_Z) {
             x = ONE;
         } else if y.lt(&ONE) {
             w = y.mul(y);

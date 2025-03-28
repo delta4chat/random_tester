@@ -23,6 +23,10 @@ use alloc::{
 pub use fastnum::D256 as Dec;
 pub use fastnum::dec256 as dec;
 
+// only for `cargo doc --document-private-items -F cli`
+#[cfg(all(doc, feature="cli"))]
+pub mod cli;
+
 pub mod entest;
 pub use entest::{Entest, EntestResult};
 
@@ -40,6 +44,12 @@ pub use sc::SerialCorrelationCoefficientCalculation;
 
 pub mod shannon;
 pub use shannon::ShannonCalculation;
+
+/* helper functions */
+/// define expected value is `correct`, then calculate error ratio of `actual`.
+pub const fn error_ratio(correct: Dec, actual: Dec) -> Dec {
+    actual.sub(correct).abs().div(correct.abs())
+}
 
 /// Tests entropy bits of provided byte stream.
 pub trait EntropyTest {
