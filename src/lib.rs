@@ -20,8 +20,8 @@ use alloc::{
     string::{String, ToString},
 };
 
-pub use fastnum::D256 as Dec;
-pub use fastnum::dec256 as dec;
+pub use fastnum2::D256 as Dec;
+pub use fastnum2::dec256 as dec;
 
 // only for `cargo doc --document-private-items -F cli`
 #[cfg(all(doc, feature="cli"))]
