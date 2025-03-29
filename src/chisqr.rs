@@ -143,7 +143,7 @@ pub const fn chi_statistic(buckets: &[usize; 256], total_buckets: usize) -> Dec 
 
     chi_sq
 }
-/**
+/*
  * FUNCTION pochisq: probability of chi sqaure value
 
  * ALGORITHM Compute probability of chi square value.

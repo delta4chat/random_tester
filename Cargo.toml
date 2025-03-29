@@ -17,13 +17,13 @@ fastnum2 = { version = "0.3.2", default-features = false }
 
 clap = { optional = true, version = "4.5.34", features = ["derive"] }
 
-rand_core = { version = "0.9.3", optional = true, default-features = false }
+rand_core = { optional = true, version = "0.9.3", default-features = false }
 
 [features]
 default = []
-std = ["fastnum2/std"]
+std = ["fastnum2/std", "rand_core/std"]
 cli = ["std", "dep:clap"]
-rand_core = ["dep:rand_core"]
+test-rng = ["dep:rand_core"]
 
 [[bin]]
 name = "entest"

@@ -210,27 +210,21 @@ impl Entest {
         this.update(bytes);
         this.finalize()
     }
+}
 
-    #[cfg(feature="rand_core")]
-    /// test the provided RNG.
-    pub fn test_rng_alloc_vec<R: rand_core::RngCore>(rng: &mut R, size: usize) -> EntestResult {
-        const CHUNK_SIZE_MAX: usize = 262144;
-
+#[cfg(feature="test-rng")]
+impl Entest {
+    /// test the provided RNG with provided buffer.
+    pub fn test_rng<R: rand_core::RngCore>(rng: &mut R, size: usize, buf: &mut [u8]) -> EntestResult {
         let mut this = Self::INIT;
         if size == 0 {
             return this.finalize();
         }
 
-        let mut chunk_size = size / 10;
-        if chunk_size < size {
-            chunk_size = size;
+        let mut chunk_size = buf.len();
+        if chunk_size == 0 {
+            panic!("programming error in external caller: provided zero length buffer to test_rng() method!");
         }
-        if chunk_size > CHUNK_SIZE_MAX {
-            chunk_size = CHUNK_SIZE_MAX;
-        }
-
-        use alloc::vec;
-        let mut chunk = vec![0u8; chunk_size];
 
         let mut remaining = size;
         while remaining > 0 {
@@ -238,11 +232,73 @@ impl Entest {
                 chunk_size = remaining;
             }
 
-            rng.fill_bytes(&mut chunk[..chunk_size]);
-            this.update(&chunk[..chunk_size]);
+            rng.fill_bytes(&mut buf[..chunk_size]);
+            this.update(&buf[..chunk_size]);
             remaining -= chunk_size;
         }
 
         this.finalize()
+    }
+
+    /// test the provided RNG with dynamic heap memory alloc by Vec.
+    pub fn test_rng_heap<R: rand_core::RngCore>(rng: &mut R, size: usize) -> EntestResult {
+        if size == 0 {
+            return Self::INIT.finalize();
+        }
+
+        let mut chunk_size = size / 10;
+        if chunk_size < 1024 || chunk_size < size {
+            chunk_size = size;
+        }
+
+        use alloc::vec;
+        let mut buf = vec![0u8; chunk_size];
+
+        Self::test_rng(rng, size, &mut buf)
+    }
+
+    /// test the provided RNG with static stack memory alloc by fixed-size array.
+    pub fn test_rng_stack<const BUF_SIZE: usize, R: rand_core::RngCore>(rng: &mut R, size: usize) -> EntestResult {
+        if size == 0 {
+            return Self::INIT.finalize();
+        }
+
+        // avoid overflow the stack.
+        // limit max buffer size to 256 KiB.
+        const BUF_SIZE_MAX: usize = 1024 * 256;
+
+        if BUF_SIZE > BUF_SIZE_MAX {
+            Self::test_rng(rng, size, &mut [0u8; BUF_SIZE_MAX])
+        } else {
+            Self::test_rng(rng, size, &mut [0u8; BUF_SIZE])
+        }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    #[allow(unused_imports)]
+    use super::*;
+
+    #[cfg(feature="test-rng")]
+    #[test]
+    fn test_rng_stack_must_not_overflow_if_buf_size_too_large() {
+        struct DummyRng;
+        impl rand_core::RngCore for DummyRng {
+            fn next_u32(&mut self) -> u32 {
+                12345678
+            }
+            fn next_u64(&mut self) -> u64 {
+                12345678
+            }
+            fn fill_bytes(&mut self, b: &mut [u8]) {
+                if ! b.is_empty() {
+                    b[0] = 1;
+                }
+            }
+        }
+
+        let mut rng = DummyRng;
+        println!("{:?}", Entest::test_rng_stack::<104857600, DummyRng>(&mut rng, 118435101));
     }
 }
