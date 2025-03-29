@@ -5,8 +5,8 @@ use super::*;
 /// Computes the Chi Square probability of a random dataset this extreme.
 #[derive(Debug, Copy, Clone)]
 pub struct ChiSquareCalculation {
-    buckets: [usize; 256],
-    total_buckets: usize,
+    pub(crate) buckets: [usize; 256],
+    pub(crate) total_buckets: usize,
 }
 
 impl Default for ChiSquareCalculation {
@@ -88,17 +88,35 @@ pub const MAX_X: Dec = dec!(20.0);
 /// negative value of [MAX_X].
 pub const NEG_MAX_X: Dec = MAX_X.neg();
 
+const LOG_SQRT_PI_D256: &'static str = "0.57236494292470008707171367567652935582364740645765578575681153573606888494239";
+const I_SQRT_PI_D256: &'static str = "0.56418958354775628694807945156077258584405062932899885684408572171064246844150";
+
+const LOG_SQRT_PI_D64: &'static str = "0.5723649429247000870";
+const I_SQRT_PI_D64: &'static str = "0.5641895835477562870";
+
 /// python: `math.log(math.sqrt(math.pi))`
 ///
 /// (approx `0.5723649429247000870717135`).
 //#[allow(long_running_const_eval)]
-pub const LOG_SQRT_PI: Dec = dec!(0.57236494292470008707171367567652935582364740645765578575681153573606888494239); // Dec::PI.sqrt().ln();
+pub const LOG_SQRT_PI: Dec =
+    // Dec::PI.sqrt().ln();
+    if cfg!(feature="lite") {
+        Dec::parse_str(LOG_SQRT_PI_D64, DEC_CTX)
+    } else {
+        Dec::parse_str(LOG_SQRT_PI_D256, DEC_CTX)
+    };
 
 /// python: `1/math.sqrt(math.pi)`
 ///
 /// (approx `0.5641895835477562869480795`)
 //#[allow(long_running_const_eval)]
-pub const I_SQRT_PI: Dec = dec!(0.56418958354775628694807945156077258584405062932899885684408572171064246844150); // Dec::ONE.div(Dec::PI.sqrt());
+pub const I_SQRT_PI: Dec =
+    // Dec::ONE.div(Dec::PI.sqrt());
+    if cfg!(feature="lite") {
+        Dec::parse_str(I_SQRT_PI_D64, DEC_CTX)
+    } else {
+        Dec::parse_str(I_SQRT_PI_D256, DEC_CTX)
+    };
 
 /// zero (`0.0`)
 pub const ZERO: Dec = dec!(0.0);

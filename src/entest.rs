@@ -183,16 +183,23 @@ impl Entest {
     /// update all test state inside the Entest.
     pub const fn update(&mut self, bytes: &[u8]) -> &mut Self {
         self.chi.update(bytes);
+        //self.mean.update(bytes);
+        //self.shannon.update(bytes);
+
         self.mc.update(bytes);
-        self.mean.update(bytes);
         self.sc.update(bytes);
-        self.shannon.update(bytes);
 
         self
     }
 
     /// get results from all test methods.
-    pub const fn finalize(&self) -> EntestResult {
+    pub const fn finalize(&mut self) -> EntestResult {
+        unwrap!(copy_from_slice(&mut self.mean.buckets, &self.chi.buckets));
+        self.mean.total_buckets = self.chi.total_buckets;
+
+        unwrap!(copy_from_slice(&mut self.shannon.buckets, &self.chi.buckets));
+        self.shannon.total_buckets = self.chi.total_buckets;
+
         let (chi, chi_prob) = self.chi.finalize_probability();
         EntestResult {
             samples: self.chi.samples(),
@@ -243,7 +250,8 @@ impl Entest {
     /// test the provided RNG with dynamic heap memory alloc by Vec.
     pub fn test_rng_heap<R: rand_core::RngCore>(rng: &mut R, size: usize) -> EntestResult {
         if size == 0 {
-            return Self::INIT.finalize();
+            let mut this = Self::INIT;
+            return this.finalize();
         }
 
         let mut chunk_size = size / 10;
@@ -260,7 +268,8 @@ impl Entest {
     /// test the provided RNG with static stack memory alloc by fixed-size array.
     pub fn test_rng_stack<const BUF_SIZE: usize, R: rand_core::RngCore>(rng: &mut R, size: usize) -> EntestResult {
         if size == 0 {
-            return Self::INIT.finalize();
+            let mut this = Self::INIT;
+            return this.finalize();
         }
 
         // avoid overflow the stack.

@@ -5,8 +5,8 @@ use super::*;
 /// Computes the Mean Entropy test
 #[derive(Debug, Clone, Copy)]
 pub struct MeanCalculation {
-    buckets: [usize; 256],
-    total_buckets: usize,
+    pub(crate) buckets: [usize; 256],
+    pub(crate) total_buckets: usize,
 }
 
 impl Default for MeanCalculation {

@@ -25,6 +25,9 @@ std = ["fastnum2/std", "rand_core/std"]
 cli = ["std", "dep:clap"]
 test-rng = ["dep:rand_core"]
 
+# "lite" version uses fastnum 64-bit decimal instead of 256-bit decimal.
+lite = []
+
 [[bin]]
 name = "entest"
 path = "src/cli.rs"

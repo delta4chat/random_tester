@@ -5,8 +5,8 @@ use super::*;
 /// Computes the Shannon Entropy test
 #[derive(Debug, Copy, Clone)]
 pub struct ShannonCalculation {
-    buckets: [usize; 256],
-    total_buckets: usize
+    pub(crate) buckets: [usize; 256],
+    pub(crate) total_buckets: usize
 }
 
 impl Default for ShannonCalculation {

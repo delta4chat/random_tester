@@ -45,6 +45,10 @@ use clap::{Parser, CommandFactory};
 #[derive(Debug, Parser)]
 #[command(name="entest", version, author, about="entest (entropy test) is a program that applies tests to byte sequences stored in files or streams. A rust implementation similar to ent tool: https://www.fourmilab.ch/random/")]
 pub struct Opt {
+    /// show build info. [TODO]
+    #[arg(long, short='i')]
+    info: bool,
+
     /// Treat input as a stream of bits.
     #[arg(long, short='b')]
     bits: bool,
@@ -101,6 +105,10 @@ fn from_file<P: AsRef<Path>>(path: P) -> std::io::Result<EntestResult> {
 
 fn result_main() -> std::io::Result<()> {
     let opt = Opt::parse();
+    if opt.info {
+        eprintln!("(LOG_SQRT_PI = {})", entest::chisqr::LOG_SQRT_PI);
+        eprintln!("(I_SQRT_PI = {})", entest::chisqr::I_SQRT_PI);
+    }
     if opt.usage {
         Opt::command().print_help()?;
         return Ok(());

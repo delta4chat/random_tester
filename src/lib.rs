@@ -19,8 +19,57 @@ use alloc::{
     string::{String, ToString},
 };
 
-pub use fastnum2::D256 as Dec;
-pub use fastnum2::dec256 as dec;
+/// copy values from dst to src.
+/// returns Ok with copied bytes if success.
+/// or return Err if `dst.len() < src.len()`
+pub const fn copy_from_slice<T: Copy>(dst: &mut [T], src: &[T]) -> Result<usize, ()> {
+    let src_len = src.len();
+    let dst_len = dst.len();
+    if dst_len < src_len {
+        return Err(());
+    }
+
+    let mut i = 0;
+    while i < src_len {
+        dst[i] = src[i];
+        i += 1;
+    }
+    Ok(i)
+}
+
+macro_rules! unwrap {
+    ($val:expr) => {
+        match $val {
+            Ok(val) => val,
+            _ => {
+                panic!("try to unwrap a Result::Err");
+            }
+        }
+    }
+}
+
+const DEC_CTX: fastnum2::decimal::Context = fastnum2::decimal::Context::default();
+
+#[cfg(not(feature="lite"))]
+pub use fastnum2::{
+    D256 as Dec,
+    dec256 as dec,
+};
+
+#[cfg(feature="lite")]
+/// D64 for feature=lite
+pub type Dec = fastnum2::decimal::Decimal<1>;
+
+#[cfg(feature="lite")]
+macro_rules! dec {
+    ($val:expr) => {
+        {
+            const N: $crate::Dec = $crate::Dec::parse_str(stringify!($val), $crate::DEC_CTX);
+
+            N
+        }
+    }
+}
 
 // only for `cargo doc --document-private-items -F cli`
 #[cfg(all(doc, feature="cli"))]
