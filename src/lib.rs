@@ -19,7 +19,7 @@ use alloc::{
     string::{String, ToString},
 };
 
-/// copy values from dst to src.
+/// copy values from `src` to `dst`.
 /// returns Ok with copied bytes if success.
 /// or return Err if `dst.len() < src.len()`
 pub const fn copy_from_slice<T: Copy>(dst: &mut [T], src: &[T]) -> Result<usize, ()> {
