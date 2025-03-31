@@ -69,14 +69,15 @@ impl core::fmt::Display for EntestResult {
 
         let mean = self.mean();
         let sc = self.sc();
-        let shannon = self.shannon();
+        let shannon = self.shannon;
+
+        let compress_ratio = dec!(100).mul(dec!(8).sub(shannon)).div(dec!(8));
 
         f.write_str("
 Entropy = ")?;
         r!(shannon);
         write!(f, " bits per byte.
-
-Optimum compression would reduce the size of this {samples} byte file by [TODO] percent.
+Optimum compression would reduce the size of this {samples} byte file by {compress_ratio:.2} percent.
 
 Chi square distribution for {samples} samples is ")?;
         r!(chi);
