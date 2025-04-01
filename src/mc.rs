@@ -6,7 +6,7 @@ const MONTE_LEN: usize = 6;
 const MONTE_LEN_HALF: usize = MONTE_LEN / 2;
 
 /// python: ((256 ** 3) - 1) ** 2
-const IN_CIRCLE_DISTANCE: Dec = Dec::from_u64(281_474_943_156_225);
+const IN_CIRCLE_DISTANCE: u64 = 281_474_943_156_225;
 
 /// See <https://www.geeksforgeeks.org/estimating-value-pi-using-monte-carlo>
 #[derive(Debug, Copy, Clone)]
@@ -51,8 +51,8 @@ impl MonteCarloCalculation {
     pub const fn update(&mut self, bytes: &[u8]) -> &mut Self {
         let bytes_len = bytes.len();
 
-        let mut x;
-        let mut y;
+        let mut x: u64;
+        let mut y: u64;
 
         let mut i = 0;
         let mut j;
@@ -65,16 +65,17 @@ impl MonteCarloCalculation {
                 self.accumulator = 0;
                 self.tries += 1;
 
-                x = dec!(0.0);
-                y = dec!(0.0);
+                x = 0;
+                y = 0;
                 j = 0;
                 while j < MONTE_LEN_HALF {
-                    x = x.mul(dec!(256.0)).add(Dec::from_u8(self.monte[j]));
-                    y = y.mul(dec!(256.0)).add(Dec::from_u8(self.monte[j + 3]));
+                    x = (x * 256) + (self.monte[j] as u64);
+                    y = (y * 256) + (self.monte[j + 3] as u64);
 
                     j += 1;
                 }
-                if x.mul(x).add(y.mul(y)).lt(&IN_CIRCLE_DISTANCE) {
+
+                if (x * x) + (y * y) < IN_CIRCLE_DISTANCE {
                     self.in_count += 1;
                 }
             }

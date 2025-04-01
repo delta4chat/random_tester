@@ -10,13 +10,13 @@ pub struct SerialCorrelationCoefficientCalculation {
     /// first time
     first: bool,
     /// term 1
-    t1: Dec,
+    t1: u64,
     /// term 2
-    t2: Dec,
+    t2: u64,
     /// term 3
-    t3: Dec,
+    t3: u64,
     /// last byte
-    last: Dec,
+    last: u8,
     /// first byte
     u0: u8,
     /// total bytes processed
@@ -31,19 +31,17 @@ impl Default for SerialCorrelationCoefficientCalculation {
 
 impl SerialCorrelationCoefficientCalculation {
     /// the blanket state (initial value) of [SerialCorrelationCoefficientCalculation].
-    pub const INIT: Self = {
-        const Z: Dec = dec!(0.0);
+    pub const INIT: Self =
         Self {
             all_equals: true,
             first: true,
-            t1: Z,
-            t2: Z,
-            t3: Z,
-            last: Z,
+            t1: 0,
+            t2: 0,
+            t3: 0,
+            last: 0,
             u0: 0,
             total: 0,
-        }
-    };
+        };
 
     /// create new blanket state for serial-correlation-coefficient calculation.
     ///
@@ -62,7 +60,7 @@ impl SerialCorrelationCoefficientCalculation {
         let mut i = 0;
         if self.first {
             self.first = false;
-            self.last = dec!(0.0);
+            self.last = 0;
             self.u0 = bytes[0];
             i = 1;
         }
@@ -76,11 +74,12 @@ impl SerialCorrelationCoefficientCalculation {
                 self.all_equals = false;
             }
 
-            un = Dec::from_u8(b);
-            self.t1 = self.t1.add(self.last.mul(un));
-            self.t2 = self.t2.add(un);
-            self.t3 = self.t3.add(un.mul(un));
-            self.last = un;
+            un = b as u64;
+            // mul is loss-less for native integer type
+            self.t1 += (self.last as u64) * un;
+            self.t2 += un;
+            self.t3 += un * un;
+            self.last = b;
 
             i += 1;
         }
@@ -88,6 +87,11 @@ impl SerialCorrelationCoefficientCalculation {
         self.total += bytes_len;
 
         self
+    }
+
+    /// checks whether all bytes equals.
+    pub const fn all_equals(&self) -> bool {
+        self.all_equals
     }
 
     /// get finalize serial-correlation-coefficient result of current byte stream.
@@ -98,9 +102,9 @@ impl SerialCorrelationCoefficientCalculation {
 
         let total = Dec::from_usize(self.total);
         let u0 = Dec::from_u8(self.u0);
-        let t1 = self.last.mul(u0).add(self.t1);
-        let t2 = self.t2.mul(self.t2);
-        let mut scc = total.mul(self.t3).sub(t2);
+        let t1 = Dec::from_u8(self.last).mul(u0).add(Dec::from_u64(self.t1));
+        let t2 = Dec::from_u64(self.t2).powi(2);
+        let mut scc = total.mul(Dec::from_u64(self.t3)).sub(t2);
 
         // Should never see scc = 0.0 for non-zero inputs and not "all-values equal".
         // Declare this as positively correlated.

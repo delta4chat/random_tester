@@ -92,7 +92,7 @@ Monte Carlo value for Pi is ")?;
         r!(mc);
         write!(f, " (error {mc_error:.2} percent).
 
-(TODO scc is not accurate)
+(TODO scc is not accurate for small inputs)
 Serial correlation coefficient is ")?;
         r!(sc);
         f.write_str(" (totally uncorrelated = 0.0).
