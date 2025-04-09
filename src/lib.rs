@@ -48,17 +48,17 @@ macro_rules! unwrap {
     }
 }
 
-const DEC_CTX: fastnum2::decimal::Context = fastnum2::decimal::Context::default();
-
-#[cfg(not(feature="lite"))]
-pub use fastnum2::{
-    D256 as Dec,
-    dec256 as dec,
+const DEC_CTX: fastnum2::decimal::Context = {
+    let mut ctx = fastnum2::decimal::Context::default();
+    ctx.set_notation(fastnum2::decimal::Notation::FullScale);
+    ctx
 };
 
-#[cfg(feature="lite")]
-/// D64 for feature=lite
-pub type Dec = fastnum2::decimal::Decimal<1>;
+#[cfg(not(feature="lite"))]
+pub use fastnum2::D256 as Dec;
+
+/// 64-bit Decimal for lite
+pub type Dec = fastnum2::decimal::D64;
 
 #[cfg(feature="lite")]
 macro_rules! dec {

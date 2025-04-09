@@ -5,8 +5,8 @@ use super::*;
 /// Computes the Chi Square probability of a random dataset this extreme.
 #[derive(Debug, Copy, Clone)]
 pub struct ChiSquareCalculation {
-    pub(crate) buckets: [usize; 256],
-    pub(crate) total_buckets: usize,
+    pub(crate) buckets: [u64; 256],
+    pub(crate) total_buckets: u64,
 }
 
 impl Default for ChiSquareCalculation {
@@ -36,9 +36,9 @@ impl ChiSquareCalculation {
         let bytes_len = bytes.len();
         while i < bytes_len {
             self.buckets[bytes[i] as usize] += 1;
-            self.total_buckets += 1;
             i += 1;
         }
+        self.total_buckets += bytes_len as u64;
 
         self
     }
@@ -58,7 +58,7 @@ impl ChiSquareCalculation {
     }
 
     /// get the samples of current state.
-    pub const fn samples(&self) -> usize {
+    pub const fn samples(&self) -> u64 {
         self.total_buckets
     }
 
@@ -137,12 +137,12 @@ pub const MAX_Z: Dec = dec!(6.0);
 pub const HALF_MAX_Z: Dec = MAX_Z.div(TWO);
 
 /// Compute X^2 statistic
-pub const fn chi_statistic(buckets: &[usize; 256], total_buckets: usize) -> Dec {
+pub const fn chi_statistic(buckets: &[u64; 256], total_buckets: u64) -> Dec {
     if total_buckets == 0 {
         return Dec::NAN;
     }
 
-    let total = Dec::from_usize(total_buckets);
+    let total = Dec::from_u64(total_buckets);
     let mut chi_sq = ZERO;
     let exp = total.div(dec!(256.0));
 
@@ -151,7 +151,7 @@ pub const fn chi_statistic(buckets: &[usize; 256], total_buckets: usize) -> Dec 
     let mut a;
 
     while i < 256 {
-        b = Dec::from_usize(buckets[i]);
+        b = Dec::from_u64(buckets[i]);
 
         a = b.sub(exp);
         chi_sq = chi_sq.add(a.mul(a).div(exp));
@@ -175,7 +175,7 @@ pub const fn chi_statistic(buckets: &[usize; 256], total_buckets: usize) -> Dec 
             (??? is it causes bugs? because fastnum has no rounding errors)
 */
 // FIXME returns incorrect result currently
-pub(crate) const fn _pochisq(chi_sq: Dec, df: usize) -> Dec {
+pub(crate) const fn _pochisq(chi_sq: Dec, df: u16) -> Dec {
     if chi_sq.le(&ZERO) || df < 1 {
         return ONE;
     }
@@ -193,7 +193,7 @@ pub(crate) const fn _pochisq(chi_sq: Dec, df: usize) -> Dec {
 
     let mut s = if even { y } else { TWO.mul(poz(x.sqrt().neg())) };
     if df > 2 {
-        x = HALF_ONE.mul(Dec::from_usize(df - 1));
+        x = HALF_ONE.mul(Dec::from_u16(df - 1));
         z = if even { ONE } else { HALF_ONE };
         if a.gt(&MAX_X) {
             e = if even { ZERO } else { LOG_SQRT_PI };
@@ -229,7 +229,7 @@ pub(crate) const fn _pochisq(chi_sq: Dec, df: usize) -> Dec {
 ///     Updated for rounding errors based on remark in
 ///         ACM TOMS June 1985, p. 185
 /// default df = 127
-pub const fn probability_chi_sq(chi_sq: Dec, df: usize) -> Dec {
+pub const fn probability_chi_sq(chi_sq: Dec, df: u16) -> Dec {
     if chi_sq.is_nan() {
         return chi_sq;
     }
@@ -241,7 +241,7 @@ pub const fn probability_chi_sq(chi_sq: Dec, df: usize) -> Dec {
     let a = HALF_ONE.mul(x);
     let mut s = TWO.mul(poz(x.sqrt().neg()));
 
-    x = Dec::from_usize(df);
+    x = Dec::from_u16(df);
     let mut z = HALF_ONE;
 
     if a.gt(&MAX_X) {

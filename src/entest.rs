@@ -6,7 +6,7 @@ use crate::*;
 #[derive(Copy, Clone)]
 #[non_exhaustive]
 pub struct EntestResult {
-    samples: usize, // samples of input (length of bytes)
+    samples: u64, // samples of input (length of bytes)
     chi: Dec,
     chi_prob: Dec,
     mc: Dec,
@@ -38,7 +38,8 @@ impl core::fmt::Display for EntestResult {
         macro_rules! r {
             ($n:ident) => {
                 {
-                    write!(out, "{}", $n)?;
+                    out.clear();
+                    write!(out, "{:.30}", $n)?;
                     let prefix = out.split_once('.').map(|(int, _)| { int.len() + 1 }).unwrap_or(0);
                     while
                         out.contains('.')
@@ -54,7 +55,6 @@ impl core::fmt::Display for EntestResult {
                         out.pop();
                     }
                     f.write_str(&out)?;
-                    out.clear();
                 }
             }
         }
@@ -102,7 +102,7 @@ Serial correlation coefficient is ")?;
 
 impl EntestResult {
     /// total samples of input. that is the length of bytes.
-    pub const fn samples(&self) -> usize {
+    pub const fn samples(&self) -> u64 {
         self.samples
     }
 
@@ -311,4 +311,10 @@ mod test {
         let mut rng = DummyRng;
         println!("{:?}", Entest::test_rng_stack::<104857600, DummyRng>(&mut rng, 118435101));
     }
+}
+
+#[test]
+fn test() {
+    let d = dec!(1.0)/dec!(100000000);
+    println!("{d}: {}", d.get_ctx());
 }

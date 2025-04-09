@@ -6,14 +6,13 @@ edition = "2021"
 license = "Apache-2.0"
 name = "entest"
 repository = "https://github.com/delta4chat/random_tester"
-version = "0.2.3"
+version = "0.2.4"
 
 [dependencies]
-#fastnum = { path = "../fastnum", default-features = false }
-#fastnum = { git = "https://github.com/delta4chat/fastnum", default-features = false }
 #fastnum = { version = "0.2.2", default-features = false }
 
-fastnum2 = { version = "0.3.2", default-features = false }
+#fastnum2 = { path = "../fastnum", default-features = false }
+fastnum2 = { version = "0.3.4", default-features = false }
 
 clap = { optional = true, version = "4.5.34", features = ["derive"] }
 
@@ -54,5 +53,4 @@ overflow-checks = true
 debug-assertions = false
 debug = 1
 incremental = false
-
 

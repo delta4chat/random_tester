@@ -20,7 +20,7 @@ pub struct SerialCorrelationCoefficientCalculation {
     /// first byte
     u0: u8,
     /// total bytes processed
-    total: usize,
+    total: u64,
 }
 
 impl Default for SerialCorrelationCoefficientCalculation {
@@ -83,8 +83,7 @@ impl SerialCorrelationCoefficientCalculation {
 
             i += 1;
         }
-
-        self.total += bytes_len;
+        self.total += bytes_len as u64;
 
         self
     }
@@ -100,7 +99,7 @@ impl SerialCorrelationCoefficientCalculation {
             return Dec::NAN;
         }
 
-        let total = Dec::from_usize(self.total);
+        let total = Dec::from_u64(self.total);
         let u0 = Dec::from_u8(self.u0);
         let t1 = Dec::from_u8(self.last).mul(u0).add(Dec::from_u64(self.t1));
         let t2 = Dec::from_u64(self.t2).powi(2);

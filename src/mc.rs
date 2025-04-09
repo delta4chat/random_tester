@@ -18,10 +18,10 @@ pub struct MonteCarloCalculation {
     accumulator: usize,
 
     /// Tries
-    tries: usize,
+    tries: u64,
 
     /// Inside Count
-    in_count: usize,
+    in_count: u64,
 }
 
 impl Default for MonteCarloCalculation {
@@ -89,8 +89,8 @@ impl MonteCarloCalculation {
         if self.tries == 0 {
             return Dec::NAN;
         }
-        let in_count = Dec::from_usize(self.in_count);
-        let tries = Dec::from_usize(self.tries);
+        let in_count = Dec::from_u64(self.in_count);
+        let tries = Dec::from_u64(self.tries);
         dec!(4.0).mul(in_count.div(tries))
     }
 

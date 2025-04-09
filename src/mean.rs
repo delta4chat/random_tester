@@ -5,8 +5,8 @@ use super::*;
 /// Computes the Mean Entropy test
 #[derive(Debug, Clone, Copy)]
 pub struct MeanCalculation {
-    pub(crate) buckets: [usize; 256],
-    pub(crate) total_buckets: usize,
+    pub(crate) buckets: [u64; 256],
+    pub(crate) total_buckets: u64,
 }
 
 impl Default for MeanCalculation {
@@ -36,10 +36,9 @@ impl MeanCalculation {
         let bytes_len = bytes.len();
         while i < bytes_len {
             self.buckets[bytes[i] as usize] += 1;
-            self.total_buckets += 1;
-
             i += 1;
         }
+        self.total_buckets += bytes_len as u64;
 
         self
     }
@@ -57,17 +56,17 @@ impl MeanCalculation {
         let mut bucket;
         while i < 256 {
             index = Dec::from_usize(i);
-            bucket = Dec::from_usize(self.buckets[i]);
+            bucket = Dec::from_u64(self.buckets[i]);
             sum = sum.add(index.mul(bucket));
 
             i += 1;
         }
 
-        sum.div(Dec::from_usize(self.total_buckets))
+        sum.div(Dec::from_u64(self.total_buckets))
     }
 
     /// get the samples of current state.
-    pub const fn samples(&self) -> usize {
+    pub const fn samples(&self) -> u64 {
         self.total_buckets
     }
 
