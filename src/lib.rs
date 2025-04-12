@@ -57,10 +57,11 @@ const DEC_CTX: fastnum2::decimal::Context = {
 #[cfg(not(feature="lite"))]
 pub use fastnum2::D256 as Dec;
 
+#[cfg(feature="lite")]
 /// 64-bit Decimal for lite
 pub type Dec = fastnum2::decimal::D64;
 
-#[cfg(feature="lite")]
+#[macro_export]
 macro_rules! dec {
     ($val:expr) => {
         {
