@@ -10,6 +10,7 @@ pub struct MeanCalculation {
 }
 
 impl Default for MeanCalculation {
+    #[inline(always)]
     fn default() -> Self {
         Self::INIT
     }
@@ -44,6 +45,7 @@ impl MeanCalculation {
     }
 
     /// get finalize mean result of current byte stream.
+    #[inline(always)]
     pub const fn finalize(&self) -> Dec {
         if self.total_buckets == 0 {
             return Dec::NAN;
@@ -66,6 +68,7 @@ impl MeanCalculation {
     }
 
     /// get the samples of current state.
+    #[inline(always)]
     pub const fn samples(&self) -> u64 {
         self.total_buckets
     }
@@ -73,6 +76,7 @@ impl MeanCalculation {
     /// oneshot test function for small data.
     ///
     /// this is equivalent to `Self::new().update(data).finalize()`.
+    #[inline(always)]
     pub const fn test(data: &[u8]) -> Dec {
         let mut this = Self::INIT;
         this.update(data);
@@ -81,10 +85,12 @@ impl MeanCalculation {
 }
 
 impl EntropyTest for MeanCalculation {
+    #[inline(always)]
     fn update(&mut self, bytes: &[u8]) {
         Self::update(self, bytes);
     }
 
+    #[inline(always)]
     fn finalize(&self) -> Dec {
         Self::finalize(self)
     }

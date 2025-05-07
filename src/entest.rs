@@ -315,6 +315,6 @@ mod test {
 
 #[test]
 fn test() {
-    let d = dec!(1.0)/dec!(100000000);
+    let d = dec!(1.0)/dec!(1000000000000000);
     println!("{d}: {}", d.get_ctx());
 }

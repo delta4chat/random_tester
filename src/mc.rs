@@ -25,6 +25,7 @@ pub struct MonteCarloCalculation {
 }
 
 impl Default for MonteCarloCalculation {
+    #[inline(always)]
     fn default() -> Self {
         Self::INIT
     }
@@ -43,11 +44,13 @@ impl MonteCarloCalculation {
     /// create new blanket state for monte-carlo calculation.
     ///
     /// this just copy from [MonteCarloCalculation::INIT].
+    #[inline(always)]
     pub const fn new() -> Self {
         Self::INIT
     }
 
     /// apply byte stream to monte-carlo state.
+    #[inline(always)]
     pub const fn update(&mut self, bytes: &[u8]) -> &mut Self {
         let bytes_len = bytes.len();
 
@@ -85,6 +88,7 @@ impl MonteCarloCalculation {
     }
 
     /// get finalize monte-carlo result of current byte stream.
+    #[inline(always)]
     pub const fn finalize(&self) -> Dec {
         if self.tries == 0 {
             return Dec::NAN;
@@ -97,6 +101,7 @@ impl MonteCarloCalculation {
     /// oneshot test function for small data.
     ///
     /// this is equivalent to `Self::new().update(data).finalize()`.
+    #[inline(always)]
     pub const fn test(data: &[u8]) -> Dec {
         let mut this = Self::INIT;
         this.update(data);
@@ -105,10 +110,12 @@ impl MonteCarloCalculation {
 }
 
 impl EntropyTest for MonteCarloCalculation {
+    #[inline(always)]
     fn update(&mut self, bytes: &[u8]) {
         Self::update(self, bytes);
     }
 
+    #[inline(always)]
     fn finalize(&self) -> Dec {
         Self::finalize(self)
     }

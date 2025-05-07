@@ -75,6 +75,7 @@ pub struct Opt {
     file: Option<PathBuf>,
 }
 
+#[inline(always)]
 fn from_reader<R: Read>(reader: &mut R) -> std::io::Result<EntestResult> {
     let mut buf = [0u8; 8192];
     let mut entest = Entest::new();
@@ -91,18 +92,21 @@ fn from_reader<R: Read>(reader: &mut R) -> std::io::Result<EntestResult> {
     Ok(entest.finalize())
 }
 
+#[inline(always)]
 fn from_stdin() -> std::io::Result<EntestResult> {
     let stdin = std::io::stdin();
     let mut stdin = std::io::BufReader::new(stdin.lock());
     from_reader(&mut stdin)
 }
 
+#[inline(always)]
 fn from_file<P: AsRef<Path>>(path: P) -> std::io::Result<EntestResult> {
     let file = std::fs::File::open(path)?;
     let mut file = std::io::BufReader::new(file);
     from_reader(&mut file)
 }
 
+#[inline(always)]
 fn result_main() -> std::io::Result<()> {
     let opt = Opt::parse();
     if opt.info {
@@ -125,6 +129,7 @@ fn result_main() -> std::io::Result<()> {
     Ok(())
 }
 
+#[inline(always)]
 fn main() {
     result_main().unwrap()
 }

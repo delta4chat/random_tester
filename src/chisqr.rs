@@ -10,6 +10,7 @@ pub struct ChiSquareCalculation {
 }
 
 impl Default for ChiSquareCalculation {
+    #[inline(always)]
     fn default() -> Self {
         Self::INIT
     }
@@ -26,11 +27,13 @@ impl ChiSquareCalculation {
     /// creates new blanket state for chi-square calculation.
     ///
     /// this just copy from [ChiSquareCalculation::INIT].
+    #[inline(always)]
     pub const fn new() -> Self {
         Self::INIT
     }
 
     /// apply byte stream to chi-square state.
+    #[inline(always)]
     pub const fn update(&mut self, bytes: &[u8]) -> &mut Self {
         let mut i = 0;
         let bytes_len = bytes.len();
@@ -44,11 +47,13 @@ impl ChiSquareCalculation {
     }
 
     /// get finalize chi-square result of current byte stream.
+    #[inline(always)]
     pub const fn finalize(&self) -> Dec {
         chi_statistic(&self.buckets, self.total_buckets)
     }
 
     /// returns `self.finalize()` and `probability_chi_sq(self.finalize())`
+    #[inline(always)]
     pub const fn finalize_probability(&self) -> (Dec, Dec) {
         let f = self.finalize();
 
@@ -58,6 +63,7 @@ impl ChiSquareCalculation {
     }
 
     /// get the samples of current state.
+    #[inline(always)]
     pub const fn samples(&self) -> u64 {
         self.total_buckets
     }
@@ -65,6 +71,7 @@ impl ChiSquareCalculation {
     /// oneshot test function for small data.
     ///
     /// this is equivalent to `Self::new().update(data).finalize_probability()`.
+    #[inline(always)]
     pub const fn test(data: &[u8]) -> (Dec, Dec) {
         let mut this = Self::INIT;
         this.update(data);
@@ -73,10 +80,12 @@ impl ChiSquareCalculation {
 }
 
 impl EntropyTest for ChiSquareCalculation {
+    #[inline(always)]
     fn update(&mut self, bytes: &[u8]) {
         Self::update(self, bytes);
     }
 
+    #[inline(always)]
     fn finalize(&self) -> Dec {
         Self::finalize(self)
     }
@@ -137,6 +146,7 @@ pub const MAX_Z: Dec = dec!(6.0);
 pub const HALF_MAX_Z: Dec = MAX_Z.div(TWO);
 
 /// Compute X^2 statistic
+#[inline(always)]
 pub const fn chi_statistic(buckets: &[u64; 256], total_buckets: u64) -> Dec {
     if total_buckets == 0 {
         return Dec::NAN;
@@ -175,6 +185,7 @@ pub const fn chi_statistic(buckets: &[u64; 256], total_buckets: u64) -> Dec {
             (??? is it causes bugs? because fastnum has no rounding errors)
 */
 // FIXME returns incorrect result currently
+#[inline(always)]
 pub(crate) const fn _pochisq(chi_sq: Dec, df: u16) -> Dec {
     if chi_sq.le(&ZERO) || df < 1 {
         return ONE;
@@ -229,6 +240,7 @@ pub(crate) const fn _pochisq(chi_sq: Dec, df: u16) -> Dec {
 ///     Updated for rounding errors based on remark in
 ///         ACM TOMS June 1985, p. 185
 /// default df = 127
+#[inline(always)]
 pub const fn probability_chi_sq(chi_sq: Dec, df: u16) -> Dec {
     if chi_sq.is_nan() {
         return chi_sq;
@@ -267,6 +279,7 @@ pub const fn probability_chi_sq(chi_sq: Dec, df: u16) -> Dec {
 }
 
 /// exp
+#[inline(always)]
 pub const fn ex(x: Dec) -> Dec {
     if x.lt(&NEG_MAX_X) {
         ZERO
@@ -276,6 +289,7 @@ pub const fn ex(x: Dec) -> Dec {
 }
 
 /// VAR normal z value
+#[inline(always)]
 pub const fn poz(z: Dec) -> Dec {
     let w;
     let x;

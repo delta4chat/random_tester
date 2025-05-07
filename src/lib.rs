@@ -22,6 +22,7 @@ use alloc::{
 /// copy values from `src` to `dst`.
 /// returns Ok with copied bytes if success.
 /// or return Err if `dst.len() < src.len()`
+#[inline(always)]
 pub const fn copy_from_slice<T: Copy>(dst: &mut [T], src: &[T]) -> Result<usize, ()> {
     let src_len = src.len();
     let dst_len = dst.len();
@@ -62,6 +63,7 @@ pub use fastnum2::D256 as Dec;
 pub type Dec = fastnum2::decimal::D64;
 
 #[macro_export]
+/// macro for create Dec type used by entest
 macro_rules! dec {
     ($val:expr) => {
         {
@@ -94,8 +96,12 @@ pub use sc::SerialCorrelationCoefficientCalculation;
 pub mod shannon;
 pub use shannon::ShannonCalculation;
 
+#[cfg(test)]
+mod tests;
+
 /* helper functions */
 /// define expected value is `correct`, then calculate error ratio of `actual`.
+#[inline(always)]
 pub const fn error_ratio(correct: Dec, actual: Dec) -> Dec {
     actual.sub(correct).abs().div(correct.abs())
 }
@@ -120,6 +126,7 @@ pub trait EntropyTestExt: Sized + Default {
     /// oneshot test function for small data.
     ///
     /// this is equivalent to `Self::default().update(bytes).finalize()`.
+    #[inline(always)]
     fn test<B: AsRef<[u8]>>(bytes: B) -> Dec {
         let mut this = Self::default();
         EntropyTestExt::update(&mut this, bytes);
@@ -128,12 +135,14 @@ pub trait EntropyTestExt: Sized + Default {
 }
 
 impl<T: EntropyTest + Default> EntropyTestExt for T {
+    #[inline(always)]
     fn update<B: AsRef<[u8]>>(&mut self, bytes: B) -> &mut Self {
         let bytes = bytes.as_ref();
         EntropyTest::update(self, bytes);
         self
     }
 
+    #[inline(always)]
     fn finalize(&self) -> Dec {
         EntropyTest::finalize(self)
     }
@@ -141,10 +150,12 @@ impl<T: EntropyTest + Default> EntropyTestExt for T {
 
 #[allow(deprecated)]
 impl<T: EntropyTester + Clone> EntropyTest for T {
+    #[inline(always)]
     fn update(&mut self, bytes: &[u8]) {
         EntropyTester::update(self, bytes)
     }
 
+    #[inline(always)]
     fn finalize(&self) -> Dec {
         let mut this = self.clone();
         EntropyTester::finalize(&mut this).into()
@@ -173,10 +184,12 @@ pub trait DynEntropyTester {
 
 #[allow(deprecated)]
 impl<T: EntropyTester> DynEntropyTester for T {
+    #[inline(always)]
     fn update(&mut self, stream: &[u8]) {
         EntropyTester::update(self, stream)
     }
 
+    #[inline(always)]
     fn finalize(&mut self) -> f64 {
         EntropyTester::finalize(self)
     }

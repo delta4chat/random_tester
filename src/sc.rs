@@ -24,6 +24,7 @@ pub struct SerialCorrelationCoefficientCalculation {
 }
 
 impl Default for SerialCorrelationCoefficientCalculation {
+    #[inline(always)]
     fn default() -> Self {
         Self::INIT
     }
@@ -46,11 +47,13 @@ impl SerialCorrelationCoefficientCalculation {
     /// create new blanket state for serial-correlation-coefficient calculation.
     ///
     /// this just copy from [SerialCorrelationCoefficientCalculation::INIT].
+    #[inline(always)]
     pub const fn new() -> Self {
         Self::INIT
     }
 
     /// apply byte stream to serial-correlation-coefficient state.
+    #[inline(always)]
     pub const fn update(&mut self, bytes: &[u8]) -> &mut Self {
         let bytes_len = bytes.len();
         if bytes_len == 0 {
@@ -89,11 +92,13 @@ impl SerialCorrelationCoefficientCalculation {
     }
 
     /// checks whether all bytes equals.
+    #[inline(always)]
     pub const fn all_equals(&self) -> bool {
         self.all_equals
     }
 
     /// get finalize serial-correlation-coefficient result of current byte stream.
+    #[inline(always)]
     pub const fn finalize(&self) -> Dec {
         if self.total == 0 || self.all_equals {
             return Dec::NAN;
@@ -119,6 +124,7 @@ impl SerialCorrelationCoefficientCalculation {
     /// oneshot test function for small data.
     ///
     /// this is equivalent to `Self::new().update(data).finalize()`.
+    #[inline(always)]
     pub const fn test(data: &[u8]) -> Dec {
         let mut this = Self::INIT;
         this.update(data);
@@ -127,10 +133,12 @@ impl SerialCorrelationCoefficientCalculation {
 }
 
 impl EntropyTest for SerialCorrelationCoefficientCalculation {
+    #[inline(always)]
     fn update(&mut self, bytes: &[u8]) {
         Self::update(self, bytes);
     }
 
+    #[inline(always)]
     fn finalize(&self) -> Dec {
         Self::finalize(self)
     }
